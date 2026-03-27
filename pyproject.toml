@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "plapre"
+name = "plapre-cpu"
 version = "0.1.0"
-description = "Danish text-to-speech synthesis"
+description = "Danish text-to-speech synthesis (CPU-only)"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
@@ -13,10 +13,10 @@ dependencies = [
     "torch",
     "torchaudio",
     "transformers",
-    "vllm>=0.15",
-    "safetensors",
+    "llama-cpp-python",
     "soundfile",
     "numpy",
+    "num2words",
     "huggingface-hub",
     "kanade-tokenizer @ git+https://github.com/frothywater/kanade-tokenizer",
 ]
@@ -25,7 +25,7 @@ dependencies = [
 serve = ["fastapi>=0.110", "uvicorn[standard]>=0.29", "python-multipart>=0.0.9"]
 
 [project.scripts]
-plapre-serve = "plapre.server:main"
+plapre-cpu-serve = "plapre.server:main"
 
 [tool.hatch.metadata]
 allow-direct-references = true

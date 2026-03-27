@@ -1,10 +1,10 @@
-# Plapre
+# PlapreCPU
 
-Danish text-to-speech synthesis. Uses vLLM for fast batched inference.
+Danish text-to-speech synthesis. CPU-only fork of [syv-ai/plapre](https://github.com/syv-ai/plapre) using llama.cpp — no CUDA required.
 
 ## Prerequisites
 
-The Plapre models are hosted as **gated models** on Hugging Face. Before using Plapre, you need to:
+The Plapre models are hosted as **gated models** on Hugging Face. Before using PlapreCPU, you need to:
 
 1. **Accept the model agreement** on the model page:
    - [syvai/plapre-nano](https://huggingface.co/syvai/plapre-nano)
@@ -17,10 +17,10 @@ The Plapre models are hosted as **gated models** on Hugging Face. Before using P
 
 ## Installation
 
-Requires Python >= 3.12 and a CUDA GPU.
+Requires Python >= 3.12. No GPU needed.
 
 ```bash
-uv add git+https://github.com/syv-ai/plapre.git
+uv add git+https://github.com/nbhansen/plapreCPU.git
 ```
 
 ## Models
@@ -41,20 +41,19 @@ tts = Plapre("syvai/plapre-nano")
 tts.speak("Hej, hvordan har du det?", output="output.wav")
 ```
 
-### GPU memory
+### CPU threads
 
 ```python
-# Adjust GPU memory allocated to vLLM (default: 0.4)
-# Leave headroom for the Kanade vocoder (~400 MiB)
-tts = Plapre("syvai/plapre-nano", gpu_memory_utilization=0.5)
+# Adjust the number of CPU threads for llama.cpp (default: 4)
+tts = Plapre("syvai/plapre-nano", n_threads=8)
 ```
 
 ### Choose a speaker
 
-Built-in speakers are loaded from the package. The first speaker is used by default.
+Five built-in speakers: `tor`, `ida`, `liv`, `ask`, `kaj`. The first (`tor`) is used by default.
 
 ```python
-tts.speak("Hej med dig.", output="output.wav", speaker="mic")
+tts.speak("Hej med dig.", output="output.wav", speaker="ida")
 ```
 
 ### Voice cloning
@@ -65,7 +64,7 @@ tts.speak("Hej med dig.", output="cloned.wav", speaker_wav="reference.wav")
 
 ### Long text with sentence splitting
 
-Sentences are batched together in a single vLLM call for higher throughput.
+Sentences are generated sequentially with silence inserted between them.
 
 ```python
 tts.speak(
@@ -88,16 +87,6 @@ tts.speak(
 )
 ```
 
-### Extract a speaker embedding
-
-Extract a 128-dim speaker embedding from a wav file, then reuse it across multiple generations:
-
-```python
-speaker_emb = tts.extract_speaker("reference.wav")
-tts.speak("Hej.", output="a.wav", speaker_emb=speaker_emb)
-tts.speak("Farvel.", output="b.wav", speaker_emb=speaker_emb)
-```
-
 ### Return value
 
 `speak()` returns the audio as a numpy array (24 kHz, float32), in addition to saving the file:
@@ -109,31 +98,31 @@ print(f"Duration: {len(audio) / 24000:.2f}s")
 
 ## API Server
 
-Plapre includes a FastAPI server that streams raw PCM audio with chunked transfer encoding, so clients can start playback before the full response is generated.
+PlapreCPU includes a FastAPI server that streams raw PCM audio with chunked transfer encoding, so clients can start playback before the full response is generated.
 
 ### Install
 
 ```bash
-uv add "plapre[serve] @ git+https://github.com/syv-ai/plapre.git"
+uv add "plapre-cpu[serve] @ git+https://github.com/nbhansen/plapreCPU.git"
 ```
 
 ### Start the server
 
 ```bash
-plapre-serve --port 8000
+plapre-cpu-serve --port 8000
 
-# Or with a specific checkpoint and GPU memory settings
-plapre-serve --checkpoint syvai/plapre-nano --gpu-mem 0.5 --port 8000
+# Or with options
+plapre-cpu-serve --checkpoint syvai/plapre-nano --threads 8 --port 8000
 ```
 
-Configuration via environment variables is also supported: `PLAPRE_CHECKPOINT`, `PLAPRE_GPU_MEM`, `PLAPRE_MAX_MODEL_LEN`.
+Configuration via environment variables: `PLAPRE_CHECKPOINT`, `PLAPRE_QUANT`, `PLAPRE_THREADS`, `PLAPRE_CTX`.
 
 ### Generate speech
 
 ```bash
 curl -X POST http://localhost:8000/v1/audio/speech \
   -H "Content-Type: application/json" \
-  -d '{"text": "Hej, hvordan har du det?", "speaker": "mic"}' \
+  -d '{"text": "Hej, hvordan har du det?", "speaker": "ida"}' \
   --output output.pcm
 
 # Convert to WAV
